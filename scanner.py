@@ -6,7 +6,7 @@ import socket
 import ssl
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Colorama fallback for clean cross-platform terminal formatting
@@ -89,7 +89,7 @@ class VulnerabilityScanner:
                     not_after_str = cert.get('notAfter')
                     if not_after_str:
                         expires_on = datetime.strptime(not_after_str, "%b %d %H:%M:%S %Y %Z")
-                        days_remaining = (expires_on - datetime.utcnow()).days
+                        days_remaining = (expires_on - datetime.now(timezone.utc).replace(tzinfo=None)).days
 
                         if days_remaining < 0:
                             msg = f"SSL/TLS Certificate expired on {expires_on.strftime('%Y-%m-%d')}."
