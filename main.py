@@ -1,6 +1,7 @@
 import argparse
 from secscan import VulnerabilityScanner
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Automated Security & API Scanner with Professional Executive Reporting")
     parser.add_argument("-t", "--target", required=True, help="Target URL (e.g., https://example.com)")

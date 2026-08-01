@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+venv/
+*.json
+*.html
+*.pdf
+!my_report.json
+!my_report.html
+!my_report.pdf
