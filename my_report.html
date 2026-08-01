@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vulnerability & API Security Assessment Report</title>
+<style>
+@page {
+    size: A4;
+    margin: 15mm 12mm;
+    background-color: #f8fafc;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #334155;
+    background-color: #f8fafc;
+    margin: 0;
+    padding: 0;
+    font-size: 10pt;
+    line-height: 1.5;
+}
+
+.header-banner {
+    background-color: #0f172a;
+    color: #ffffff;
+    margin: -15mm -12mm 20px -12mm;
+    padding: 24px 15mm;
+    border-bottom: 4px solid #2563eb;
+}
+
+.header-banner h1 {
+    margin: 0 0 6px 0;
+    font-size: 18pt;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: #ffffff;
+}
+
+.header-banner .subtitle {
+    color: #94a3b8;
+    font-size: 10pt;
+    margin: 0;
+}
+
+.meta-grid {
+    width: 100%;
+    margin-bottom: 20px;
+    border-collapse: collapse;
+}
+
+.meta-grid td {
+    padding: 8px 12px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    font-size: 9.5pt;
+}
+
+.meta-label {
+    font-weight: 600;
+    color: #475569;
+    width: 18%;
+    background-color: #f1f5f9 !important;
+}
+
+.meta-val {
+    color: #0f172a;
+    width: 32%;
+}
+
+.section-title {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 20px 0 10px 0;
+    padding-left: 10px;
+    border-left: 4px solid #2563eb;
+    page-break-after: avoid;
+}
+
+.summary-cards {
+    width: 100%;
+    margin-bottom: 22px;
+    border-collapse: separate;
+    border-spacing: 8px;
+}
+
+.summary-card {
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 10px;
+    text-align: center;
+}
+
+.card-num {
+    font-size: 18pt;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.card-label {
+    font-size: 8pt;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+}
+
+.bg-critical { color: #dc2626; }
+.bg-high { color: #ea580c; }
+.bg-medium { color: #d97706; }
+.bg-low { color: #2563eb; }
+
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 8pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #ffffff;
+}
+
+.badge-critical { background-color: #dc2626; }
+.badge-high { background-color: #ea580c; }
+.badge-medium { background-color: #d97706; }
+.badge-low { background-color: #2563eb; }
+
+.table-findings {
+    width: 100%;
+    border-collapse: collapse;
+    background: #ffffff;
+    margin-bottom: 20px;
+}
+
+.table-findings th {
+    background-color: #1e293b;
+    color: #ffffff;
+    text-align: left;
+    padding: 8px 10px;
+    font-size: 9pt;
+    font-weight: 600;
+}
+
+.table-findings td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 9pt;
+}
+
+.finding-box {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    page-break-inside: avoid;
+}
+
+.finding-header {
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+.finding-title {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #475569;
+    margin-top: 6px;
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.detail-text {
+    color: #334155;
+    background: #f8fafc;
+    padding: 8px;
+    border-left: 3px solid #cbd5e1;
+    font-size: 9pt;
+    margin-top: 4px;
+}
+
+.remediation-text {
+    color: #065f46;
+    background: #ecfdf5;
+    padding: 8px;
+    border-left: 3px solid #10b981;
+    font-size: 9pt;
+    margin-top: 4px;
+}
+
+.footer {
+    margin-top: 30px;
+    padding-top: 10px;
+    border-top: 1px solid #cbd5e1;
+    font-size: 8pt;
+    color: #64748b;
+    text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div class="header-banner">
+    <h1>Security Assessment & Vulnerability Report</h1>
+    <div class="subtitle">Automated Web Security & API Threat Intelligence Audit</div>
+</div>
+
+<table class="meta-grid">
+    <tr>
+        <td class="meta-label">Target URL</td>
+        <td class="meta-val"><code>https://example.com</code></td>
+        <td class="meta-label">Scan Date</td>
+        <td class="meta-val">2026-08-01 15:50:41 UTC</td>
+    </tr>
+    <tr>
+        <td class="meta-label">Domain Name</td>
+        <td class="meta-val">example.com</td>
+        <td class="meta-label">Scan Duration</td>
+        <td class="meta-val">2.72 seconds</td>
+    </tr>
+    <tr>
+        <td class="meta-label">Audit Engine</td>
+        <td class="meta-val">SecScan Enterprise v3.5</td>
+        <td class="meta-label">Worker Threads</td>
+        <td class="meta-val">10 Concurrent Threads</td>
+    </tr>
+</table>
+
+<div class="section-title">Executive Risk Summary</div>
+
+<table class="summary-cards">
+    <tr>
+        <td class="summary-card" style="width: 20%;">
+            <div class="card-num">5</div>
+            <div class="card-label" style="color: #475569;">Total Risks</div>
+        </td>
+        <td class="summary-card" style="width: 20%;">
+            <div class="card-num bg-critical">0</div>
+            <div class="card-label bg-critical">Critical</div>
+        </td>
+        <td class="summary-card" style="width: 20%;">
+            <div class="card-num bg-high">1</div>
+            <div class="card-label bg-high">High</div>
+        </td>
+        <td class="summary-card" style="width: 20%;">
+            <div class="card-num bg-medium">2</div>
+            <div class="card-label bg-medium">Medium</div>
+        </td>
+        <td class="summary-card" style="width: 20%;">
+            <div class="card-num bg-low">2</div>
+            <div class="card-label bg-low">Low / Info</div>
+        </td>
+    </tr>
+</table>
+
+<div class="section-title">Vulnerability Overview</div>
+
+            <table class="table-findings">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Severity</th>
+                        <th style="width: 10%;">CVSS</th>
+                        <th style="width: 45%;">Vulnerability Title</th>
+                        <th style="width: 30%;">Category</th>
+                    </tr>
+                </thead>
+                <tbody>
+            
+                <tr>
+                    <td><span class="badge badge-high">High</span></td>
+                    <td><strong>6.5</strong></td>
+                    <td>Missing Header: Content-Security-Policy</td>
+                    <td>HTTP Security Header</td>
+                </tr>
+                
+                <tr>
+                    <td><span class="badge badge-medium">Medium</span></td>
+                    <td><strong>5.3</strong></td>
+                    <td>Missing Header: Strict-Transport-Security</td>
+                    <td>HTTP Security Header</td>
+                </tr>
+                
+                <tr>
+                    <td><span class="badge badge-medium">Medium</span></td>
+                    <td><strong>4.3</strong></td>
+                    <td>Missing Header: X-Frame-Options</td>
+                    <td>HTTP Security Header</td>
+                </tr>
+                
+                <tr>
+                    <td><span class="badge badge-low">Low</span></td>
+                    <td><strong>3.4</strong></td>
+                    <td>Missing Header: X-Content-Type-Options</td>
+                    <td>HTTP Security Header</td>
+                </tr>
+                
+                <tr>
+                    <td><span class="badge badge-low">Low</span></td>
+                    <td><strong>3.1</strong></td>
+                    <td>Missing Header: Referrer-Policy</td>
+                    <td>HTTP Security Header</td>
+                </tr>
+                </tbody></table><div class="section-title">Detailed Vulnerability Findings & Remediation</div>
+                <div class="finding-box">
+                    <div class="finding-header">
+                        <span class="badge badge-high">High</span>
+                        <span style="font-size: 9pt; color: #64748b; margin-left: 8px;">CVSS v3.1: 6.5</span>
+                        <div class="finding-title" style="margin-top: 4px;">#1. Missing Header: Content-Security-Policy</div>
+                    </div>
+                    
+                    <div class="detail-label">Technical Observation</div>
+                    <div class="detail-text">Missing HTTP Security Header: 'Content-Security-Policy'. Mitigates Cross-Site Scripting (XSS) and data injection attacks.</div>
+                    
+                    <div class="detail-label">Recommended Remediation Action</div>
+                    <div class="remediation-text">Implement a robust Content-Security-Policy header restricting script execution sources.</div>
+                </div>
+                
+                <div class="finding-box">
+                    <div class="finding-header">
+                        <span class="badge badge-medium">Medium</span>
+                        <span style="font-size: 9pt; color: #64748b; margin-left: 8px;">CVSS v3.1: 5.3</span>
+                        <div class="finding-title" style="margin-top: 4px;">#2. Missing Header: Strict-Transport-Security</div>
+                    </div>
+                    
+                    <div class="detail-label">Technical Observation</div>
+                    <div class="detail-text">Missing HTTP Security Header: 'Strict-Transport-Security'. Enforces secure HTTPS connections.</div>
+                    
+                    <div class="detail-label">Recommended Remediation Action</div>
+                    <div class="remediation-text">Configure HSTS header: 'max-age=31536000; includeSubDomains; preload'.</div>
+                </div>
+                
+                <div class="finding-box">
+                    <div class="finding-header">
+                        <span class="badge badge-medium">Medium</span>
+                        <span style="font-size: 9pt; color: #64748b; margin-left: 8px;">CVSS v3.1: 4.3</span>
+                        <div class="finding-title" style="margin-top: 4px;">#3. Missing Header: X-Frame-Options</div>
+                    </div>
+                    
+                    <div class="detail-label">Technical Observation</div>
+                    <div class="detail-text">Missing HTTP Security Header: 'X-Frame-Options'. Protects application against Clickjacking attacks.</div>
+                    
+                    <div class="detail-label">Recommended Remediation Action</div>
+                    <div class="remediation-text">Set X-Frame-Options header to 'DENY' or 'SAMEORIGIN'.</div>
+                </div>
+                
+                <div class="finding-box">
+                    <div class="finding-header">
+                        <span class="badge badge-low">Low</span>
+                        <span style="font-size: 9pt; color: #64748b; margin-left: 8px;">CVSS v3.1: 3.4</span>
+                        <div class="finding-title" style="margin-top: 4px;">#4. Missing Header: X-Content-Type-Options</div>
+                    </div>
+                    
+                    <div class="detail-label">Technical Observation</div>
+                    <div class="detail-text">Missing HTTP Security Header: 'X-Content-Type-Options'. Prevents browser MIME-sniffing vulnerabilities.</div>
+                    
+                    <div class="detail-label">Recommended Remediation Action</div>
+                    <div class="remediation-text">Configure 'X-Content-Type-Options: nosniff'.</div>
+                </div>
+                
+                <div class="finding-box">
+                    <div class="finding-header">
+                        <span class="badge badge-low">Low</span>
+                        <span style="font-size: 9pt; color: #64748b; margin-left: 8px;">CVSS v3.1: 3.1</span>
+                        <div class="finding-title" style="margin-top: 4px;">#5. Missing Header: Referrer-Policy</div>
+                    </div>
+                    
+                    <div class="detail-label">Technical Observation</div>
+                    <div class="detail-text">Missing HTTP Security Header: 'Referrer-Policy'. Controls referrer information disclosure in request headers.</div>
+                    
+                    <div class="detail-label">Recommended Remediation Action</div>
+                    <div class="remediation-text">Set 'Referrer-Policy: strict-origin-when-cross-origin'.</div>
+                </div>
+                
+<div class="footer">
+    Confidential Security Assessment Document &bull; Generated automatically by SecScan Threat Intelligence Engine
+</div>
+
+</body>
+</html>

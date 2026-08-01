@@ -1,0 +1,31 @@
+{
+    "target": "https://httpbin.org",
+    "total_findings": 5,
+    "findings": [
+        {
+            "type": "Missing Header",
+            "detail": "Content-Security-Policy",
+            "severity": "Medium"
+        },
+        {
+            "type": "Missing Header",
+            "detail": "Strict-Transport-Security",
+            "severity": "Medium"
+        },
+        {
+            "type": "Missing Header",
+            "detail": "X-Frame-Options",
+            "severity": "Medium"
+        },
+        {
+            "type": "Missing Header",
+            "detail": "X-Content-Type-Options",
+            "severity": "Medium"
+        },
+        {
+            "type": "Missing Header",
+            "detail": "Referrer-Policy",
+            "severity": "Medium"
+        }
+    ]
+}

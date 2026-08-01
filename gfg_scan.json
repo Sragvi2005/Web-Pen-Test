@@ -1,0 +1,16 @@
+{
+    "target": "https://www.geeksforgeeks.org",
+    "total_findings": 2,
+    "findings": [
+        {
+            "type": "Missing Header",
+            "detail": "X-Frame-Options",
+            "severity": "Medium"
+        },
+        {
+            "type": "Exposed Endpoint",
+            "detail": "/robots.txt",
+            "severity": "High"
+        }
+    ]
+}

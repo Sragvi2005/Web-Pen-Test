@@ -1,0 +1,47 @@
+{
+    "target": "https://example.com",
+    "scan_timestamp": "2026-08-01T15:50:41.111343",
+    "total_findings": 5,
+    "findings": [
+        {
+            "title": "Missing Header: Content-Security-Policy",
+            "type": "HTTP Security Header",
+            "severity": "High",
+            "cvss": "6.5",
+            "detail": "Missing HTTP Security Header: 'Content-Security-Policy'. Mitigates Cross-Site Scripting (XSS) and data injection attacks.",
+            "remediation": "Implement a robust Content-Security-Policy header restricting script execution sources."
+        },
+        {
+            "title": "Missing Header: Strict-Transport-Security",
+            "type": "HTTP Security Header",
+            "severity": "Medium",
+            "cvss": "5.3",
+            "detail": "Missing HTTP Security Header: 'Strict-Transport-Security'. Enforces secure HTTPS connections.",
+            "remediation": "Configure HSTS header: 'max-age=31536000; includeSubDomains; preload'."
+        },
+        {
+            "title": "Missing Header: X-Frame-Options",
+            "type": "HTTP Security Header",
+            "severity": "Medium",
+            "cvss": "4.3",
+            "detail": "Missing HTTP Security Header: 'X-Frame-Options'. Protects application against Clickjacking attacks.",
+            "remediation": "Set X-Frame-Options header to 'DENY' or 'SAMEORIGIN'."
+        },
+        {
+            "title": "Missing Header: X-Content-Type-Options",
+            "type": "HTTP Security Header",
+            "severity": "Low",
+            "cvss": "3.4",
+            "detail": "Missing HTTP Security Header: 'X-Content-Type-Options'. Prevents browser MIME-sniffing vulnerabilities.",
+            "remediation": "Configure 'X-Content-Type-Options: nosniff'."
+        },
+        {
+            "title": "Missing Header: Referrer-Policy",
+            "type": "HTTP Security Header",
+            "severity": "Low",
+            "cvss": "3.1",
+            "detail": "Missing HTTP Security Header: 'Referrer-Policy'. Controls referrer information disclosure in request headers.",
+            "remediation": "Set 'Referrer-Policy: strict-origin-when-cross-origin'."
+        }
+    ]
+}
