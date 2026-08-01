@@ -1,12 +1,13 @@
 # 🔐 SecScan — Automated Web Security & API Threat Intelligence Scanner
 
-A command-line penetration testing tool that performs automated vulnerability assessments against web applications and APIs, then generates professional HTML and PDF executive reports.
+A command-line penetration testing tool that performs automated vulnerability assessments against web applications and APIs, then generates professional HTML and PDF executive reports. Built with a modular Python architecture.
 
 ---
 
 ## 📋 Table of Contents
 
 - [Features](#-features)
+- [Project Architecture](#-project-architecture)
 - [Requirements](#-requirements)
 - [Installation](#-installation)
 - [Usage](#-usage)
@@ -26,6 +27,25 @@ A command-line penetration testing tool that performs automated vulnerability as
 - ✅ **Sensitive Endpoint Discovery** — Concurrent multi-threaded scan for exposed files/paths
 - ✅ **Reflected XSS Detection** — Tests for unsanitized input parameter reflection
 - ✅ **Executive Reports** — Generates JSON, HTML, and PDF reports with CVSS v3.1 scores and remediation guidance
+- ✅ **Modular Architecture** — Clean separation of scanner engines, reporting modules, logger, and CLI entry points
+
+---
+
+## 🏗️ Project Architecture
+
+```text
+Web-Pen-Test/
+├── secscan/                  # Core Security Scanner Package
+│   ├── __init__.py           # Package exports (VulnerabilityScanner)
+│   ├── core.py               # Core VulnerabilityScanner class orchestrator
+│   ├── logger.py             # Cross-platform terminal logging with Colorama
+│   ├── scanners.py           # Vulnerability detection & security audit functions
+│   └── report.py             # HTML, PDF (WeasyPrint), and JSON report generators
+├── scanner.py                # Backward-compatible CLI entry point
+├── main.py                   # Modular CLI entry point
+├── README.md                 # Project documentation
+└── .gitignore                # Git exclusion rules
+```
 
 ---
 
@@ -36,8 +56,8 @@ A command-line penetration testing tool that performs automated vulnerability as
 | Python             | 3.10+       |
 | requests           | ≥ 2.28      |
 | colorama           | ≥ 0.4       |
-| weasyprint         | ≥ 69.0 *(for PDF)* |
-| pango *(macOS)*    | via Homebrew *(for PDF)* |
+| weasyprint         | ≥ 69.0 *(optional, for PDF)* |
+| pango *(macOS)*    | via Homebrew *(optional, for PDF)* |
 
 ---
 
@@ -46,8 +66,8 @@ A command-line penetration testing tool that performs automated vulnerability as
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourname/pen-test.git
-cd pen-test
+git clone https://github.com/Sragvi2005/Web-Pen-Test.git
+cd Web-Pen-Test
 ```
 
 ### 2. Create and Activate a Virtual Environment
@@ -62,7 +82,7 @@ venv\Scripts\activate           # Windows
 ### 3. Install Python Dependencies
 
 ```bash
-pip install requests weasyprint colorama
+pip install requests colorama weasyprint
 ```
 
 ### 4. Install System Libraries for PDF Generation (macOS only)
@@ -79,8 +99,12 @@ brew install pango
 
 ## 📖 Usage
 
+Run using `main.py` or `scanner.py`:
+
 ```bash
-DYLD_LIBRARY_PATH=/opt/homebrew/lib venv/bin/python scanner.py -t <TARGET_URL> [OPTIONS]
+python main.py -t <TARGET_URL> [OPTIONS]
+# OR
+python scanner.py -t <TARGET_URL> [OPTIONS]
 ```
 
 ### Arguments
@@ -131,7 +155,7 @@ Checks for the presence of these OWASP-recommended headers:
 ### 4. Sensitive Endpoint Discovery
 Concurrently probes common sensitive paths:
 
-```
+```text
 /.env           /.git/HEAD       /config.json    /admin
 /api/v1/health  /swagger.json    /robots.txt     /server-status
 /.aws/credentials                /backup.sql
@@ -147,20 +171,17 @@ Concurrently probes common sensitive paths:
 
 **Basic scan:**
 ```bash
-DYLD_LIBRARY_PATH=/opt/homebrew/lib venv/bin/python scanner.py -t https://example.com
+python main.py -t https://example.com
 ```
 
 **Scan with custom output name and thread count:**
 ```bash
-DYLD_LIBRARY_PATH=/opt/homebrew/lib venv/bin/python scanner.py \
-  -t https://target-app.com \
-  -w 20 \
-  -o target_audit_report
+python main.py -t https://target-app.com -w 20 -o target_audit_report
 ```
 
-**Scan without PDF (no Homebrew / system libs needed):**
+**Scan without PDF (if missing system libraries):**
 ```bash
-venv/bin/python scanner.py -t https://example.com -o report
+python main.py -t https://example.com -o report
 ```
 > PDF will be skipped automatically; JSON and HTML reports will still be generated.
 
@@ -169,26 +190,20 @@ venv/bin/python scanner.py -t https://example.com -o report
 ## 🛠 Troubleshooting
 
 ### `OSError: cannot load library 'libgobject-2.0-0'`
-WeasyPrint cannot find the required system library. Fix:
+WeasyPrint cannot find the required system library on macOS. Fix:
 ```bash
 brew install pango
 ```
 Then run with:
 ```bash
-DYLD_LIBRARY_PATH=/opt/homebrew/lib venv/bin/python scanner.py ...
+DYLD_LIBRARY_PATH=/opt/homebrew/lib python main.py ...
 ```
 
 ### `command not found: python`
-macOS uses `python3`. Always run via the virtual environment:
+On macOS/Linux, Python 3 is often invoked as `python3`:
 ```bash
-venv/bin/python scanner.py ...
+python3 main.py ...
 ```
-
-### `Cannot find module 'weasyprint'` (IDE warning)
-Your IDE is using the system Python, not the virtual environment. In VS Code:
-1. Press `⌘ + Shift + P`
-2. Select **"Python: Select Interpreter"**
-3. Choose `./venv/bin/python`
 
 ---
 
