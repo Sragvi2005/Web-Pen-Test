@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SecScan — Web Penetration Testing Intelligence</title>
+  <meta name="description" content="SecScan is a precision automated penetration testing engine. Scan SSL/TLS, security headers, CORS policies, sensitive endpoints, and XSS vectors with CVSS-scored findings and remediation guidance." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- IDENTITY STRIP -->
+  <header class="site-header" id="top">
+    <div class="header-left">
+      <span class="logo-mark">SEC<span class="logo-accent">SCAN</span></span>
+      <span class="header-tag">v3.5 &middot; Enterprise Audit Engine</span>
+    </div>
+    <nav class="header-nav">
+      <a href="#how-it-works" class="nav-link">How It Works</a>
+      <a href="#scan-coverage" class="nav-link">Coverage</a>
+      <a href="#reports" class="nav-link">Reports</a>
+      <a href="#try-it" class="nav-link nav-cta">Run Audit</a>
+    </nav>
+    <button class="nav-mobile-btn" id="nav-mobile-btn" aria-label="Open navigation">&#9776;</button>
+  </header>
+
+  <!-- COMMAND TERMINAL - Primary Interaction -->
+  <section class="terminal-section" id="try-it">
+    <div class="terminal-left">
+      <div class="terminal-headline">
+        <h1>Expose what's<br /><em>actually</em> exposed.</h1>
+        <p class="terminal-sub">Precision vulnerability auditing for web applications and APIs. Five attack surface modules. CVSS v3.1-scored findings. Actionable remediation &mdash; not noise.</p>
+      </div>
+
+      <div class="scan-probe" id="scan-probe">
+        <div class="probe-bar">
+          <span class="probe-icon">&#11041;</span>
+          <input type="url" id="target-url" class="probe-input" placeholder="https://target.example.com" autocomplete="off" spellcheck="false" />
+          <button class="probe-btn" id="run-scan-btn" onclick="runScan()">AUDIT</button>
+        </div>
+        <div class="probe-options">
+          <label class="probe-opt">
+            <input type="checkbox" id="opt-ssl" checked /> SSL/TLS
+          </label>
+          <label class="probe-opt">
+            <input type="checkbox" id="opt-headers" checked /> Headers
+          </label>
+          <label class="probe-opt">
+            <input type="checkbox" id="opt-cors" checked /> CORS
+          </label>
+          <label class="probe-opt">
+            <input type="checkbox" id="opt-endpoints" checked /> Endpoints
+          </label>
+          <label class="probe-opt">
+            <input type="checkbox" id="opt-xss" checked /> XSS
+          </label>
+          <span class="probe-threads">
+            <span class="pt-label">Threads</span>
+            <input type="number" id="workers" class="pt-input" value="10" min="1" max="50" />
+          </span>
+        </div>
+      </div>
+
+      <div class="terminal-notice">
+        <span class="notice-icon">&#9650;</span>
+        Only audit systems you own or have <strong>explicit written permission</strong> to test. Unauthorized scanning is illegal.
+      </div>
+    </div>
+
+    <div class="terminal-right">
+      <div class="terminal-window" id="terminal-window">
+        <div class="tw-chrome">
+          <div class="tw-dots">
+            <span class="dot dot-r"></span>
+            <span class="dot dot-y"></span>
+            <span class="dot dot-g"></span>
+          </div>
+          <span class="tw-title" id="tw-title">secscan@engine ~ </span>
+        </div>
+        <div class="tw-body" id="terminal-output">
+          <div class="tw-line tw-muted">SecScan Enterprise Engine v3.5</div>
+          <div class="tw-line tw-muted">&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;&#9472;</div>
+          <div class="tw-line tw-dim">Enter a target URL and press AUDIT to begin</div>
+          <div class="tw-line tw-dim">All five scan modules will run concurrently</div>
+          <div class="tw-line">&nbsp;</div>
+          <div class="tw-line tw-muted">Modules available:</div>
+          <div class="tw-line tw-ok">  &#10003; SSL/TLS Certificate Inspection</div>
+          <div class="tw-line tw-ok">  &#10003; HTTP Security Header Audit</div>
+          <div class="tw-line tw-ok">  &#10003; CORS Misconfiguration Detection</div>
+          <div class="tw-line tw-ok">  &#10003; Sensitive Endpoint Discovery</div>
+          <div class="tw-line tw-ok">  &#10003; Reflected XSS Detection</div>
+          <div class="tw-line">&nbsp;</div>
+          <div class="tw-cursor-line"><span class="tw-prompt">$</span> <span class="tw-cursor">&#9608;</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCAN RESULTS - Injected Dynamically -->
+  <section class="results-section" id="results-section" style="display:none;">
+    <div class="results-header">
+      <div class="results-meta" id="results-meta"></div>
+      <div class="results-actions">
+        <button class="action-btn" id="export-json-btn" onclick="exportJSON()">&#8711; JSON</button>
+        <button class="action-btn action-btn-primary" id="copy-report-btn" onclick="copyReport()">&#10680; Copy Report</button>
+        <button class="action-btn action-btn-secondary" onclick="resetScan()">&#8635; New Scan</button>
+      </div>
+    </div>
+
+    <!-- Risk Meter -->
+    <div class="risk-meter-wrap">
+      <div class="risk-label-row">
+        <span class="risk-label-txt">RISK POSTURE</span>
+        <span class="risk-score-val" id="risk-score-val">&mdash;</span>
+      </div>
+      <div class="risk-bar-track">
+        <div class="risk-bar-fill" id="risk-bar-fill"></div>
+      </div>
+      <div class="risk-ticks">
+        <span>CLEAN</span><span>LOW</span><span>MEDIUM</span><span>HIGH</span><span>CRITICAL</span>
+      </div>
+    </div>
+
+    <!-- Severity Breakdown -->
+    <div class="sev-strip" id="sev-strip"></div>
+
+    <!-- Filter Toolbar -->
+    <div class="filter-bar">
+      <span class="filter-label">FILTER BY</span>
+      <button class="filter-btn active" id="filter-all" onclick="applyFilter('all')">All</button>
+      <button class="filter-btn" id="filter-Critical" onclick="applyFilter('Critical')">Critical</button>
+      <button class="filter-btn" id="filter-High" onclick="applyFilter('High')">High</button>
+      <button class="filter-btn" id="filter-Medium" onclick="applyFilter('Medium')">Medium</button>
+      <button class="filter-btn" id="filter-Low" onclick="applyFilter('Low')">Low</button>
+    </div>
+
+    <!-- Findings Grid -->
+    <div class="findings-grid" id="findings-grid"></div>
+
+    <!-- Clean State -->
+    <div class="clean-state" id="clean-state" style="display:none;">
+      <div class="clean-icon">&#9711;</div>
+      <div class="clean-title">No vulnerabilities detected</div>
+      <div class="clean-sub">All five scan modules completed without flagging any security issues against this target.</div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS - Mechanical, not marketing -->
+  <section class="mechanics-section" id="how-it-works">
+    <div class="mechanics-label">EXECUTION SEQUENCE</div>
+    <div class="mechanics-flow">
+
+      <div class="mech-step" data-n="01">
+        <div class="mech-num">01</div>
+        <div class="mech-content">
+          <div class="mech-title">Target Resolution</div>
+          <div class="mech-desc">URL is parsed, domain extracted, HTTPS scheme validated. A persistent session is established with a custom User-Agent to bypass trivial bot-detection during the audit window.</div>
+          <code class="mech-code">VulnerabilityScanner(target_url, max_threads)</code>
+        </div>
+      </div>
+
+      <div class="mech-connector">&#8595;</div>
+
+      <div class="mech-step" data-n="02">
+        <div class="mech-num">02</div>
+        <div class="mech-content">
+          <div class="mech-title">SSL/TLS Inspection</div>
+          <div class="mech-desc">Direct socket connection to port 443. Captures TLS negotiated version and cipher suite. Flags TLS 1.0, 1.1, SSLv3, SSLv2 as deprecated. Certificate expiry computed &mdash; alerts if expired or &lt;15 days from expiry.</div>
+          <code class="mech-code">ssl.create_default_context() &#8594; sock.getpeercert()</code>
+        </div>
+      </div>
+
+      <div class="mech-connector">&#8595;</div>
+
+      <div class="mech-step" data-n="03">
+        <div class="mech-num">03</div>
+        <div class="mech-content">
+          <div class="mech-title">HTTP Header Audit</div>
+          <div class="mech-desc">GET request to root. Response headers are cross-checked against five OWASP-recommended headers. Each missing header is scored independently with a CVSS v3.1 vector, not averaged.</div>
+          <code class="mech-code">CSP &middot; HSTS &middot; X-Frame-Options &middot; XCTO &middot; Referrer-Policy</code>
+        </div>
+      </div>
+
+      <div class="mech-connector">&#8595;</div>
+
+      <div class="mech-step" data-n="04">
+        <div class="mech-num">04</div>
+        <div class="mech-content">
+          <div class="mech-title">CORS Policy Probe</div>
+          <div class="mech-desc">Forged Origin header is injected. Response is checked for arbitrary reflection. If Access-Control-Allow-Credentials: true is also present, severity escalates to Critical &mdash; this is a credential exfiltration vector.</div>
+          <code class="mech-code">Origin: https://evil-attacker-domain.com</code>
+        </div>
+      </div>
+
+      <div class="mech-connector">&#8595;</div>
+
+      <div class="mech-step" data-n="05">
+        <div class="mech-num">05</div>
+        <div class="mech-content">
+          <div class="mech-title">Concurrent Endpoint Discovery</div>
+          <div class="mech-desc">ThreadPoolExecutor distributes 10 common sensitive paths across worker threads. HTTP 200 responses are flagged. Paths like /.env, /.git/HEAD, /.aws/credentials score High; others score Medium.</div>
+          <code class="mech-code">/.env &middot; /.git/HEAD &middot; /swagger.json &middot; /.aws/credentials &middot; /backup.sql</code>
+        </div>
+      </div>
+
+      <div class="mech-connector">&#8595;</div>
+
+      <div class="mech-step" data-n="06">
+        <div class="mech-num">06</div>
+        <div class="mech-content">
+          <div class="mech-title">Reflected XSS Detection</div>
+          <div class="mech-desc">A safe test string &lt;SecTest123&gt; is URL-encoded and injected as query parameter ?q=. If the raw unescaped string appears in the response body, unsanitized input reflection is confirmed.</div>
+          <code class="mech-code">/?q=%3CSecTest123%3E &#8594; grep response.text</code>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- SCAN COVERAGE - Detailed table -->
+  <section class="coverage-section" id="scan-coverage">
+    <div class="coverage-inner">
+      <div class="coverage-head">
+        <div class="coverage-tag">ATTACK SURFACE COVERAGE</div>
+        <h2 class="coverage-title">What gets tested, and why it matters</h2>
+      </div>
+
+      <div class="coverage-table-wrap">
+        <table class="coverage-table">
+          <thead>
+            <tr>
+              <th>Module</th>
+              <th>Check</th>
+              <th>CVSS</th>
+              <th>Risk if Present</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="module-cell" rowspan="2">SSL/TLS</td>
+              <td>Deprecated protocol (TLS 1.0/1.1, SSLv3)</td>
+              <td><span class="cvss-badge cvss-high">7.5</span></td>
+              <td>Downgrade attacks, POODLE, BEAST</td>
+            </tr>
+            <tr>
+              <td>Certificate expired / expiring (&lt;15 days)</td>
+              <td><span class="cvss-badge cvss-med">5.3&ndash;7.4</span></td>
+              <td>Browser trust errors, MITM exposure</td>
+            </tr>
+            <tr class="tr-alt">
+              <td class="module-cell" rowspan="5">HTTP Headers</td>
+              <td>Missing Content-Security-Policy</td>
+              <td><span class="cvss-badge cvss-high">6.5</span></td>
+              <td>XSS, data injection</td>
+            </tr>
+            <tr class="tr-alt">
+              <td>Missing Strict-Transport-Security</td>
+              <td><span class="cvss-badge cvss-med">5.3</span></td>
+              <td>Protocol downgrade attacks</td>
+            </tr>
+            <tr class="tr-alt">
+              <td>Missing X-Frame-Options</td>
+              <td><span class="cvss-badge cvss-med">4.3</span></td>
+              <td>Clickjacking</td>
+            </tr>
+            <tr class="tr-alt">
+              <td>Missing X-Content-Type-Options</td>
+              <td><span class="cvss-badge cvss-low">3.4</span></td>
+              <td>MIME-type confusion</td>
+            </tr>
+            <tr class="tr-alt">
+              <td>Missing Referrer-Policy</td>
+              <td><span class="cvss-badge cvss-low">3.1</span></td>
+              <td>Referrer information leakage</td>
+            </tr>
+            <tr>
+              <td class="module-cell" rowspan="2">CORS</td>
+              <td>Arbitrary origin reflection + credentials</td>
+              <td><span class="cvss-badge cvss-crit">8.8</span></td>
+              <td>Cross-origin credential theft</td>
+            </tr>
+            <tr>
+              <td>Arbitrary origin reflection (no credentials)</td>
+              <td><span class="cvss-badge cvss-med">5.3</span></td>
+              <td>Cross-origin data exfiltration</td>
+            </tr>
+            <tr class="tr-alt">
+              <td class="module-cell" rowspan="2">Endpoints</td>
+              <td>Critical paths: .env, .git/HEAD, .aws/credentials</td>
+              <td><span class="cvss-badge cvss-high">7.5</span></td>
+              <td>Secret/credential exposure</td>
+            </tr>
+            <tr class="tr-alt">
+              <td>Informational paths: /admin, /swagger.json</td>
+              <td><span class="cvss-badge cvss-med">5.3</span></td>
+              <td>Attack surface reconnaissance</td>
+            </tr>
+            <tr>
+              <td class="module-cell">XSS</td>
+              <td>Reflected unsanitized input in response</td>
+              <td><span class="cvss-badge cvss-high">7.2</span></td>
+              <td>Script injection, session hijacking</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- REPORT FORMAT - Output section -->
+  <section class="report-section" id="reports">
+    <div class="report-inner">
+      <div class="report-tag">OUTPUT FORMATS</div>
+      <h2 class="report-title">Three report formats. Zero manual work.</h2>
+
+      <div class="report-formats">
+        <div class="report-format">
+          <div class="rf-ext">.json</div>
+          <div class="rf-name">Structured Data</div>
+          <div class="rf-desc">Machine-readable findings. Pipe into SIEM, Jira, or custom dashboards. Each finding includes title, type, severity, CVSS score, technical detail, and remediation action.</div>
+          <div class="rf-fields">
+            <code>target</code><code>scan_timestamp</code><code>total_findings</code><code>findings[]</code><code>severity</code><code>cvss</code><code>remediation</code>
+          </div>
+        </div>
+
+        <div class="report-format rf-featured">
+          <div class="rf-ext">.html</div>
+          <div class="rf-name">Executive Report</div>
+          <div class="rf-desc">Browser-ready report with risk summary cards, vulnerability overview table, and detailed per-finding remediation guidance. Self-contained &mdash; no external dependencies.</div>
+          <div class="rf-fields">
+            <code>Risk Summary</code><code>CVSS Scores</code><code>Vuln Overview Table</code><code>Detailed Findings</code><code>Remediation Guidance</code>
+          </div>
+        </div>
+
+        <div class="report-format">
+          <div class="rf-ext">.pdf</div>
+          <div class="rf-name">Print-Ready PDF</div>
+          <div class="rf-desc">A4-formatted document generated via WeasyPrint. Suitable for client deliverables and compliance documentation. Gracefully skipped if WeasyPrint is not installed &mdash; HTML and JSON still export.</div>
+          <div class="rf-fields">
+            <code>A4 Layout</code><code>WeasyPrint</code><code>Client Deliverable</code><code>Graceful Fallback</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="report-cmd-block">
+        <div class="rcb-label">CLI USAGE</div>
+        <div class="rcb-commands">
+          <div class="rcb-cmd">
+            <span class="cmd-prompt">$</span>
+            <span class="cmd-text">python main.py -t https://target.example.com</span>
+            <span class="cmd-comment"># basic scan</span>
+          </div>
+          <div class="rcb-cmd">
+            <span class="cmd-prompt">$</span>
+            <span class="cmd-text">python main.py -t https://target.example.com -w 20 -o audit_report</span>
+            <span class="cmd-comment"># 20 threads, custom output prefix</span>
+          </div>
+          <div class="rcb-cmd">
+            <span class="cmd-prompt">$</span>
+            <span class="cmd-text">python scanner.py -t https://target.example.com</span>
+            <span class="cmd-comment"># backward-compatible entry point</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALL - Minimal, technical -->
+  <section class="install-section">
+    <div class="install-inner">
+      <div class="install-left">
+        <div class="install-tag">SETUP</div>
+        <h2 class="install-title">Get running in&nbsp;4 steps</h2>
+        <p class="install-note">Python 3.10+ required. WeasyPrint and pango are optional &mdash; only needed for PDF output. All other features work with a base install.</p>
+        <div class="install-reqs">
+          <div class="req-row"><span class="req-name">Python</span><span class="req-ver">3.10+</span></div>
+          <div class="req-row"><span class="req-name">requests</span><span class="req-ver">&ge; 2.28</span></div>
+          <div class="req-row"><span class="req-name">colorama</span><span class="req-ver">&ge; 0.4</span></div>
+          <div class="req-row req-optional"><span class="req-name">weasyprint</span><span class="req-ver">&ge; 69.0 &middot; optional</span></div>
+          <div class="req-row req-optional"><span class="req-name">pango</span><span class="req-ver">macOS only &middot; optional</span></div>
+        </div>
+      </div>
+
+      <div class="install-right">
+        <div class="install-steps">
+          <div class="install-step">
+            <span class="is-num">1</span>
+            <div class="is-content">
+              <div class="is-label">Clone</div>
+              <code class="is-code">git clone https://github.com/Sragvi2005/Web-Pen-Test.git &amp;&amp; cd Web-Pen-Test</code>
+            </div>
+          </div>
+          <div class="install-step">
+            <span class="is-num">2</span>
+            <div class="is-content">
+              <div class="is-label">Virtual Environment</div>
+              <code class="is-code">python3 -m venv venv &amp;&amp; source venv/bin/activate</code>
+            </div>
+          </div>
+          <div class="install-step">
+            <span class="is-num">3</span>
+            <div class="is-content">
+              <div class="is-label">Install Dependencies</div>
+              <code class="is-code">pip install requests colorama weasyprint</code>
+            </div>
+          </div>
+          <div class="install-step">
+            <span class="is-num">4</span>
+            <div class="is-content">
+              <div class="is-label">Run First Scan</div>
+              <code class="is-code">python main.py -t https://your-target.com</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <span class="footer-logo">SEC<span class="logo-accent">SCAN</span></span>
+        <span class="footer-ver">Enterprise Audit Engine v3.5</span>
+      </div>
+      <div class="footer-disclaimer">
+        This tool is intended for <strong>authorized security testing only</strong>. Only scan systems you own or have explicit written permission to test. Unauthorized use is illegal and unethical.
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/Sragvi2005/Web-Pen-Test" target="_blank" rel="noopener" class="footer-link">GitHub</a>
+        <a href="#try-it" class="footer-link">Run Audit</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
