@@ -1,0 +1,28 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment — never include in the image
+venv/
+.venv/
+
+# Git metadata
+.git/
+.gitignore
+
+# Test / report output files (not needed in the container)
+*.json
+*.html
+*.pdf
+!frontend/index.html
+
+# macOS artifacts
+.DS_Store
+
+# Editor files
+.vscode/
+.idea/
+*.swp

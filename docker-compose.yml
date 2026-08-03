@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  secscan:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: secscan:latest
+    container_name: secscan-app
+    ports:
+      - "5000:5000"       # Frontend + API — open http://localhost:5000
+    restart: unless-stopped
+    # Allow the scanner to reach external targets
+    # (no network restrictions — it needs to probe real URLs)
+    environment:
+      - PYTHONUNBUFFERED=1   # Show Python logs in docker logs immediately
