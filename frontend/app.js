@@ -1,8 +1,11 @@
 /* ============================================================
    SECSCAN — FRONTEND JAVASCRIPT
-   Simulates scan execution via terminal output, handles all
-   edge cases: invalid URL, empty input, no findings, errors.
+   Calls the Python backend API for real scan execution.
+   Falls back to simulation mode if the backend is unreachable.
    ============================================================ */
+
+// ─── CONFIG ───────────────────────────────────────────────
+const API_BASE = 'http://127.0.0.1:5000';
 
 // ─── STATE ────────────────────────────────────────────────
 let scanState = {
@@ -12,10 +15,11 @@ let scanState = {
   scanDuration: 0,
   startTime: null,
   currentFilter: 'all',
+  backendAvailable: null, // null = unknown, true/false after first check
 };
 
 // ─── DEMO FINDINGS BANK ───────────────────────────────────
-// Used for UI demonstration when running from browser (no Python backend)
+// Used ONLY as a fallback when the Python backend is not running
 const DEMO_FINDINGS = {
   ssl: [
     {
@@ -192,7 +196,255 @@ function computeRisk(findings) {
   return { label: 'LOW', pct: 22, color: '#60a5fa' };
 }
 
-// ─── SCAN SIMULATION ──────────────────────────────────────
+// ─── BACKEND HEALTH CHECK ─────────────────────────────────
+
+async function checkBackend() {
+  try {
+    const res = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(2000) });
+    if (res.ok) {
+      scanState.backendAvailable = true;
+      return true;
+    }
+  } catch {
+    // Backend not reachable
+  }
+  scanState.backendAvailable = false;
+  return false;
+}
+
+// ─── REAL SCAN (Backend API) ──────────────────────────────
+
+async function runScanBackend(rawUrl, mods, workers) {
+  clearTerminal();
+  document.getElementById('tw-title').textContent = `secscan@engine — ${new URL(rawUrl).hostname}`;
+
+  addTerminalLine('SecScan Enterprise Engine v3.5', 'tw-muted');
+  addTerminalLine('══════════════════════════════════════════', 'tw-muted');
+  await sleep(80);
+  addTerminalLine(`[TARGET]   ${rawUrl}`);
+  addTerminalLine(`[THREADS]  ${workers} workers`);
+  addTerminalLine(`[MODULES]  ${Object.entries(mods).filter(([,v]) => v).map(([k]) => k.toUpperCase()).join(', ')}`);
+  addTerminalLine(`[MODE]     LIVE — Python backend connected`, 'tw-ok');
+  addTerminalLine('', '');
+  await sleep(100);
+
+  const progressFill = addProgressBar();
+  updateProgress(progressFill, 10);
+
+  addTerminalLine('[*] Sending scan request to backend…', 'tw-muted');
+  await sleep(100);
+
+  try {
+    const res = await fetch(`${API_BASE}/api/scan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: rawUrl, modules: mods, workers }),
+    });
+
+    updateProgress(progressFill, 50);
+
+    const data = await res.json();
+
+    if (data.status === 'error' && res.status !== 200) {
+      addTerminalLine(`[ERROR] Backend error: ${data.message || 'Unknown error'}`, 'tw-line-vuln');
+      updateProgress(progressFill, 100);
+      return { findings: [], duration: data.scan_duration || 0, logs: data.logs || [] };
+    }
+
+    // Replay the backend log lines into the terminal
+    updateProgress(progressFill, 60);
+    if (data.logs && data.logs.length) {
+      addTerminalLine('', '');
+      addTerminalLine('[*] Backend scan output:', 'tw-muted');
+      for (let i = 0; i < data.logs.length; i++) {
+        const logEntry = data.logs[i];
+        addTerminalLine(logEntry.text, logEntry.cls || '');
+        // Stagger lines for visual effect (fast, not blocking)
+        if (i % 3 === 0) await sleep(30);
+        updateProgress(progressFill, 60 + Math.round((i / data.logs.length) * 35));
+      }
+    }
+
+    updateProgress(progressFill, 100);
+    return { findings: data.findings || [], duration: data.scan_duration || 0, logs: data.logs || [] };
+
+  } catch (err) {
+    addTerminalLine(`[ERROR] Failed to reach backend: ${err.message}`, 'tw-line-vuln');
+    updateProgress(progressFill, 100);
+    return null; // Signal to fall back to simulation
+  }
+}
+
+// ─── SIMULATED SCAN (Fallback) ────────────────────────────
+
+async function runScanSimulated(rawUrl, mods, workers) {
+  clearTerminal();
+  document.getElementById('tw-title').textContent = `secscan@engine — ${new URL(rawUrl).hostname}`;
+
+  addTerminalLine('SecScan Enterprise Engine v3.5', 'tw-muted');
+  addTerminalLine('══════════════════════════════════════════', 'tw-muted');
+  await sleep(120);
+  addTerminalLine(`[TARGET]   ${rawUrl}`);
+  addTerminalLine(`[THREADS]  ${workers} workers`);
+  addTerminalLine(`[MODULES]  ${Object.entries(mods).filter(([,v]) => v).map(([k]) => k.toUpperCase()).join(', ')}`);
+  addTerminalLine(`[MODE]     SIMULATED — backend not connected`, 'tw-line-vuln');
+  addTerminalLine('', '');
+  await sleep(200);
+  addTerminalLine('[*] Initialising session with SecScan-Enterprise-Engine/3.5 user-agent…', 'tw-muted');
+  await sleep(350);
+  addTerminalLine('[*] Resolving domain and establishing probe connection…', 'tw-muted');
+  await sleep(500);
+
+  const findings = [];
+  const progressFill = addProgressBar();
+  let totalModules = Object.values(mods).filter(Boolean).length;
+  let doneMods = 0;
+
+  // ── MODULE: SSL/TLS ──
+  if (mods.ssl) {
+    addTerminalLine('', '');
+    addTerminalLine('[MODULE] SSL/TLS Certificate Inspection', 'tw-muted');
+    await sleep(300);
+    addTerminalLine(`[*] Connecting to ${new URL(rawUrl).hostname}:443 via socket…`, 'tw-dim');
+    await sleep(500);
+
+    const roll = Math.random();
+    if (rawUrl.startsWith('http://')) {
+      addTerminalLine('[INFO] Target is not using HTTPS. Skipping SSL/TLS inspection.', 'tw-muted');
+    } else if (roll < 0.35) {
+      addTerminalLine('[✓] TLS Version in Use: TLSv1.3 | Cipher: TLS_AES_256_GCM_SHA384', 'tw-ok');
+      await sleep(200);
+      addTerminalLine('[✓] SSL Certificate is valid for 287 more days.', 'tw-ok');
+    } else if (roll < 0.6) {
+      addTerminalLine('[✓] TLS Version in Use: TLSv1.3 | Cipher: TLS_AES_256_GCM_SHA384', 'tw-ok');
+      await sleep(200);
+      addTerminalLine('[VULN] SSL/TLS Certificate is nearing expiration (expires in 9 days).', 'tw-line-vuln');
+      findings.push(DEMO_FINDINGS.ssl[1]);
+    } else {
+      addTerminalLine('[VULN] Deprecated TLS protocol version in use: TLSv1.1', 'tw-line-vuln');
+      findings.push(DEMO_FINDINGS.ssl[0]);
+      await sleep(200);
+      addTerminalLine('[✓] SSL Certificate is valid for 91 more days.', 'tw-ok');
+    }
+
+    doneMods++;
+    updateProgress(progressFill, Math.round((doneMods / totalModules) * 100));
+    await sleep(300);
+  }
+
+  // ── MODULE: HEADERS ──
+  if (mods.headers) {
+    addTerminalLine('', '');
+    addTerminalLine('[MODULE] HTTP Security Header Audit', 'tw-muted');
+    await sleep(250);
+    addTerminalLine('[*] GET / — checking OWASP-recommended response headers…', 'tw-dim');
+    await sleep(450);
+
+    const allHeaders = DEMO_FINDINGS.headers;
+    for (const h of allHeaders) {
+      await sleep(80);
+      if (Math.random() < 0.62) {
+        addTerminalLine(`[VULN] ${h.title}`, 'tw-line-vuln');
+        findings.push(h);
+      } else {
+        const headerName = h.title.replace('Missing Header: ', '');
+        addTerminalLine(`[✓] Found Header: ${headerName}`, 'tw-ok');
+      }
+    }
+
+    doneMods++;
+    updateProgress(progressFill, Math.round((doneMods / totalModules) * 100));
+    await sleep(300);
+  }
+
+  // ── MODULE: CORS ──
+  if (mods.cors) {
+    addTerminalLine('', '');
+    addTerminalLine('[MODULE] CORS Misconfiguration Detection', 'tw-muted');
+    await sleep(250);
+    addTerminalLine('[*] Injecting forged Origin: https://evil-attacker-domain.com', 'tw-dim');
+    await sleep(500);
+
+    const roll = Math.random();
+    if (roll < 0.25) {
+      addTerminalLine('[VULN] CRITICAL: Origin reflected with Access-Control-Allow-Credentials: true!', 'tw-line-crit');
+      findings.push(DEMO_FINDINGS.cors[0]);
+    } else if (roll < 0.45) {
+      addTerminalLine('[VULN] Arbitrary Origin Reflection detected without credentials flag.', 'tw-line-vuln');
+      findings.push({
+        title: 'Arbitrary CORS Origin Reflection',
+        type: 'Cross-Origin Access',
+        severity: 'Medium',
+        cvss: '5.3',
+        detail: "Arbitrary Origin Reflection detected: Access-Control-Allow-Origin reflects arbitrary origin 'https://evil-attacker-domain.com'.",
+        remediation: 'Restrict Access-Control-Allow-Origin to static, strictly validated domain lists.',
+      });
+    } else {
+      addTerminalLine('[✓] CORS policy appears properly restricted.', 'tw-ok');
+    }
+
+    doneMods++;
+    updateProgress(progressFill, Math.round((doneMods / totalModules) * 100));
+    await sleep(300);
+  }
+
+  // ── MODULE: ENDPOINTS ──
+  if (mods.endpoints) {
+    addTerminalLine('', '');
+    addTerminalLine(`[MODULE] Sensitive Endpoint Discovery (${workers} threads)`, 'tw-muted');
+    await sleep(250);
+    const paths = ['/.env', '/.git/HEAD', '/config.json', '/admin', '/api/v1/health', '/swagger.json', '/robots.txt', '/server-status', '/.aws/credentials', '/backup.sql'];
+    addTerminalLine('[*] Dispatching concurrent probe requests…', 'tw-dim');
+    await sleep(300);
+
+    const critPaths = ['/.env', '/.git/HEAD', '/.aws/credentials', '/backup.sql'];
+    for (const path of paths) {
+      await sleep(60 + Math.random() * 80);
+      if (Math.random() < 0.18) {
+        addTerminalLine(`[VULN] HTTP 200 — Exposed endpoint: ${path}`, 'tw-line-vuln');
+        const isCrit = critPaths.includes(path);
+        findings.push({
+          title: `Exposed Sensitive File/Directory: ${path}`,
+          type: 'Information Disclosure',
+          severity: isCrit ? 'High' : 'Medium',
+          cvss: isCrit ? '7.5' : '5.3',
+          detail: `Exposed Sensitive Endpoint: ${path} returned HTTP 200 OK.`,
+          remediation: `Restrict public access to path '${path}' using web server access controls or authenticated route guards.`,
+        });
+      } else {
+        addTerminalLine(`[—] ${path} → 404`, 'tw-dim');
+      }
+    }
+
+    doneMods++;
+    updateProgress(progressFill, Math.round((doneMods / totalModules) * 100));
+    await sleep(300);
+  }
+
+  // ── MODULE: XSS ──
+  if (mods.xss) {
+    addTerminalLine('', '');
+    addTerminalLine('[MODULE] Reflected XSS Detection', 'tw-muted');
+    await sleep(250);
+    addTerminalLine('[*] Injecting payload: /?q=%3CSecTest123%3E', 'tw-dim');
+    await sleep(550);
+
+    if (Math.random() < 0.4) {
+      addTerminalLine('[VULN] Unsanitized reflected input detected at query parameter q!', 'tw-line-vuln');
+      findings.push(DEMO_FINDINGS.xss[0]);
+    } else {
+      addTerminalLine('[INFO] No simple reflected input found in standard parameters.', 'tw-muted');
+    }
+
+    doneMods++;
+    updateProgress(progressFill, Math.round((doneMods / totalModules) * 100));
+    await sleep(300);
+  }
+
+  return findings;
+}
+
+// ─── MAIN SCAN ORCHESTRATOR ───────────────────────────────
 
 async function runScan() {
   if (scanState.isScanning) return;
@@ -249,175 +501,34 @@ async function runScan() {
   // Hide results from previous scan
   document.getElementById('results-section').style.display = 'none';
 
-  // Clear and set up terminal
-  clearTerminal();
-  document.getElementById('tw-title').textContent = `secscan@engine — ${new URL(rawUrl).hostname}`;
+  // Try backend first, fall back to simulation
+  const backendUp = await checkBackend();
+  let scanFindings = [];
+  let scanDuration = 0;
 
-  await sleep(60);
+  if (backendUp) {
+    // ── LIVE MODE: call the Python backend ──
+    const result = await runScanBackend(rawUrl, mods, workers);
 
-  addTerminalLine('SecScan Enterprise Engine v3.5', 'tw-muted');
-  addTerminalLine('══════════════════════════════════════════', 'tw-muted');
-  await sleep(120);
-  addTerminalLine(`[TARGET]   ${rawUrl}`);
-  addTerminalLine(`[THREADS]  ${workers} workers`);
-  addTerminalLine(`[MODULES]  ${Object.entries(mods).filter(([,v]) => v).map(([k]) => k.toUpperCase()).join(', ')}`);
-  addTerminalLine('', '');
-  await sleep(200);
-  addTerminalLine('[*] Initialising session with SecScan-Enterprise-Engine/3.5 user-agent…', 'tw-muted');
-  await sleep(350);
-  addTerminalLine('[*] Resolving domain and establishing probe connection…', 'tw-muted');
-  await sleep(500);
-
-  const progressFill = addProgressBar();
-  let totalModules = Object.values(mods).filter(Boolean).length;
-  let doneMods = 0;
-
-  // ── MODULE: SSL/TLS ──
-  if (mods.ssl) {
-    addTerminalLine('', '');
-    addTerminalLine('[MODULE] SSL/TLS Certificate Inspection', 'tw-muted');
-    await sleep(300);
-    // Simulate connection
-    addTerminalLine(`[*] Connecting to ${new URL(rawUrl).hostname}:443 via socket…`, 'tw-dim');
-    await sleep(500);
-
-    // Pick random realistic demo outcome
-    const roll = Math.random();
-    if (rawUrl.startsWith('http://')) {
-      addTerminalLine('[INFO] Target is not using HTTPS. Skipping SSL/TLS inspection.', 'tw-muted');
-    } else if (roll < 0.35) {
-      addTerminalLine('[✓] TLS Version in Use: TLSv1.3 | Cipher: TLS_AES_256_GCM_SHA384', 'tw-ok');
-      await sleep(200);
-      addTerminalLine('[✓] SSL Certificate is valid for 287 more days.', 'tw-ok');
-    } else if (roll < 0.6) {
-      addTerminalLine('[✓] TLS Version in Use: TLSv1.3 | Cipher: TLS_AES_256_GCM_SHA384', 'tw-ok');
-      await sleep(200);
-      addTerminalLine('[VULN] SSL/TLS Certificate is nearing expiration (expires in 9 days).', 'tw-line-vuln');
-      scanState.findings.push(DEMO_FINDINGS.ssl[1]);
+    if (result === null) {
+      // Backend was detected but request failed mid-scan — fall back
+      addTerminalLine('', '');
+      addTerminalLine('[FALLBACK] Backend connection lost. Switching to simulation mode…', 'tw-line-vuln');
+      await sleep(300);
+      scanFindings = await runScanSimulated(rawUrl, mods, workers);
+      scanDuration = ((Date.now() - scanState.startTime) / 1000).toFixed(2);
     } else {
-      addTerminalLine('[VULN] Deprecated TLS protocol version in use: TLSv1.1', 'tw-line-vuln');
-      scanState.findings.push(DEMO_FINDINGS.ssl[0]);
-      await sleep(200);
-      addTerminalLine('[✓] SSL Certificate is valid for 91 more days.', 'tw-ok');
+      scanFindings = result.findings;
+      scanDuration = result.duration;
     }
-
-    doneMods++;
-    updateProgress(progressFill, Math.round((doneMods / totalModules) * 100));
-    await sleep(300);
+  } else {
+    // ── SIMULATION MODE: no backend available ──
+    scanFindings = await runScanSimulated(rawUrl, mods, workers);
+    scanDuration = ((Date.now() - scanState.startTime) / 1000).toFixed(2);
   }
 
-  // ── MODULE: HEADERS ──
-  if (mods.headers) {
-    addTerminalLine('', '');
-    addTerminalLine('[MODULE] HTTP Security Header Audit', 'tw-muted');
-    await sleep(250);
-    addTerminalLine('[*] GET / — checking OWASP-recommended response headers…', 'tw-dim');
-    await sleep(450);
-
-    const allHeaders = DEMO_FINDINGS.headers;
-    // Randomly include/exclude headers for realism
-    for (const h of allHeaders) {
-      await sleep(80);
-      if (Math.random() < 0.62) {
-        addTerminalLine(`[VULN] ${h.title}`, 'tw-line-vuln');
-        scanState.findings.push(h);
-      } else {
-        const headerName = h.title.replace('Missing Header: ', '');
-        addTerminalLine(`[✓] Found Header: ${headerName}`, 'tw-ok');
-      }
-    }
-
-    doneMods++;
-    updateProgress(progressFill, Math.round((doneMods / totalModules) * 100));
-    await sleep(300);
-  }
-
-  // ── MODULE: CORS ──
-  if (mods.cors) {
-    addTerminalLine('', '');
-    addTerminalLine('[MODULE] CORS Misconfiguration Detection', 'tw-muted');
-    await sleep(250);
-    addTerminalLine('[*] Injecting forged Origin: https://evil-attacker-domain.com', 'tw-dim');
-    await sleep(500);
-
-    const roll = Math.random();
-    if (roll < 0.25) {
-      addTerminalLine('[VULN] CRITICAL: Origin reflected with Access-Control-Allow-Credentials: true!', 'tw-line-crit');
-      scanState.findings.push(DEMO_FINDINGS.cors[0]);
-    } else if (roll < 0.45) {
-      addTerminalLine('[VULN] Arbitrary Origin Reflection detected without credentials flag.', 'tw-line-vuln');
-      scanState.findings.push({
-        title: 'Arbitrary CORS Origin Reflection',
-        type: 'Cross-Origin Access',
-        severity: 'Medium',
-        cvss: '5.3',
-        detail: "Arbitrary Origin Reflection detected: Access-Control-Allow-Origin reflects arbitrary origin 'https://evil-attacker-domain.com'.",
-        remediation: 'Restrict Access-Control-Allow-Origin to static, strictly validated domain lists.',
-      });
-    } else {
-      addTerminalLine('[✓] CORS policy appears properly restricted.', 'tw-ok');
-    }
-
-    doneMods++;
-    updateProgress(progressFill, Math.round((doneMods / totalModules) * 100));
-    await sleep(300);
-  }
-
-  // ── MODULE: ENDPOINTS ──
-  if (mods.endpoints) {
-    addTerminalLine('', '');
-    addTerminalLine(`[MODULE] Sensitive Endpoint Discovery (${workers} threads)`, 'tw-muted');
-    await sleep(250);
-    const paths = ['/.env', '/.git/HEAD', '/config.json', '/admin', '/api/v1/health', '/swagger.json', '/robots.txt', '/server-status', '/.aws/credentials', '/backup.sql'];
-    addTerminalLine('[*] Dispatching concurrent probe requests…', 'tw-dim');
-    await sleep(300);
-
-    const critPaths = ['/.env', '/.git/HEAD', '/.aws/credentials', '/backup.sql'];
-    for (const path of paths) {
-      await sleep(60 + Math.random() * 80);
-      if (Math.random() < 0.18) {
-        addTerminalLine(`[VULN] HTTP 200 — Exposed endpoint: ${path}`, 'tw-line-vuln');
-        const isCrit = critPaths.includes(path);
-        scanState.findings.push({
-          title: `Exposed Sensitive File/Directory: ${path}`,
-          type: 'Information Disclosure',
-          severity: isCrit ? 'High' : 'Medium',
-          cvss: isCrit ? '7.5' : '5.3',
-          detail: `Exposed Sensitive Endpoint: ${path} returned HTTP 200 OK.`,
-          remediation: `Restrict public access to path '${path}' using web server access controls or authenticated route guards.`,
-        });
-      } else {
-        addTerminalLine(`[—] ${path} → 404`, 'tw-dim');
-      }
-    }
-
-    doneMods++;
-    updateProgress(progressFill, Math.round((doneMods / totalModules) * 100));
-    await sleep(300);
-  }
-
-  // ── MODULE: XSS ──
-  if (mods.xss) {
-    addTerminalLine('', '');
-    addTerminalLine('[MODULE] Reflected XSS Detection', 'tw-muted');
-    await sleep(250);
-    addTerminalLine('[*] Injecting payload: /?q=%3CSecTest123%3E', 'tw-dim');
-    await sleep(550);
-
-    if (Math.random() < 0.4) {
-      addTerminalLine('[VULN] Unsanitized reflected input detected at query parameter q!', 'tw-line-vuln');
-      scanState.findings.push(DEMO_FINDINGS.xss[0]);
-    } else {
-      addTerminalLine('[INFO] No simple reflected input found in standard parameters.', 'tw-muted');
-    }
-
-    doneMods++;
-    updateProgress(progressFill, Math.round((doneMods / totalModules) * 100));
-    await sleep(300);
-  }
-
-  // ── SCAN COMPLETE ──
-  const scanDuration = ((Date.now() - scanState.startTime) / 1000).toFixed(2);
+  // Finalise state
+  scanState.findings = scanFindings;
   scanState.scanDuration = scanDuration;
 
   await sleep(300);
@@ -464,6 +575,7 @@ function renderResults() {
     <div>DOMAIN &nbsp; <strong>${new URL(scanState.target).hostname}</strong></div>
     <div>DURATION &nbsp; <strong>${scanState.scanDuration}s</strong></div>
     <div>FINDINGS &nbsp; <strong>${scanState.findings.length}</strong></div>
+    <div>MODE &nbsp; <strong>${scanState.backendAvailable ? '🟢 LIVE' : '🟡 SIMULATED'}</strong></div>
   `;
 
   // Risk meter
@@ -595,6 +707,7 @@ function exportJSON() {
     scan_timestamp: new Date(scanState.startTime).toISOString(),
     total_findings: scanState.findings.length,
     scan_duration_seconds: parseFloat(scanState.scanDuration),
+    mode: scanState.backendAvailable ? 'live' : 'simulated',
     findings: scanState.findings,
   };
   const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
@@ -613,6 +726,7 @@ function copyReport() {
     `Target: ${scanState.target}`,
     `Scan Date: ${new Date(scanState.startTime).toISOString()}`,
     `Findings: ${scanState.findings.length}`,
+    `Mode: ${scanState.backendAvailable ? 'Live (Python backend)' : 'Simulated'}`,
     ``,
     ...scanState.findings.map(
       (f, i) =>
@@ -664,6 +778,7 @@ function resetScan() {
     scanDuration: 0,
     startTime: null,
     currentFilter: 'all',
+    backendAvailable: null,
   };
 
   const error = document.querySelector('.scan-error');
@@ -753,3 +868,19 @@ mechSteps.forEach((step, i) => {
   step.style.transition = `opacity 0.4s ease ${i * 60}ms, transform 0.4s ease ${i * 60}ms`;
   observer.observe(step);
 });
+
+// ─── BACKEND STATUS INDICATOR ON LOAD ─────────────────────
+
+(async function initBackendCheck() {
+  const isUp = await checkBackend();
+  // Optionally show a small indicator in the terminal
+  const output = document.getElementById('terminal-output');
+  const cursor = output.querySelector('.tw-cursor-line');
+  const statusLine = document.createElement('div');
+  statusLine.className = 'tw-line ' + (isUp ? 'tw-ok' : 'tw-dim');
+  statusLine.textContent = isUp
+    ? '[✓] Backend API connected — scans will use the Python engine'
+    : '[—] Backend API not detected — results will be simulated (start server.py for live scans)';
+  if (cursor) output.insertBefore(statusLine, cursor);
+  else output.appendChild(statusLine);
+})();
